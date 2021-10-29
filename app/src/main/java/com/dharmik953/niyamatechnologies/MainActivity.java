@@ -2,6 +2,11 @@ package com.dharmik953.niyamatechnologies;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
@@ -11,6 +16,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.RingtoneManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
@@ -25,6 +31,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_ENABLE_BT = 20 ;
     int SELECT_PICTURE = 200;
 
+    BluetoothAdapter bluetoothAdapter;
 
     ImageView imageView;
     TextView tv;
@@ -55,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
         startActivityForResult(discoverableIntent, requestCode);
 
         bluetooth.setOnClickListener(v -> {
-            BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+            bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
             if (bluetoothAdapter == null) {
                 // Device doesn't support Bluetooth
                 Toast.makeText(getApplicationContext(), "Your devise has no bluetooth", Toast.LENGTH_SHORT).show();
@@ -78,13 +85,25 @@ public class MainActivity extends AppCompatActivity {
 
         });
 
-        final long [] vibe = {0,500};
-        final Uri notificationsound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
+            NotificationChannel channel = new NotificationChannel("my notification","my notification", NotificationManager.IMPORTANCE_DEFAULT);
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            manager.createNotificationChannel(channel);
+        }
 
         print.setOnClickListener(v -> {
-            Toast.makeText(getApplicationContext(), "Printing", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(), "     Printing Document     ", Toast.LENGTH_SHORT).show();
             tv.setText(et.getText().toString());
             et.setText("");
+//*************************************************************************         Notification       *******************************************************************************************
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(MainActivity.this, "my notification");
+            builder.setContentTitle("Printing");
+            builder.setContentText("Your document is printing");
+            builder.setSmallIcon(R.drawable.ic_baseline_print_24);
+            builder.setAutoCancel(true);
+
+            NotificationManagerCompat managerCompat = NotificationManagerCompat.from(MainActivity.this);
+            managerCompat.notify(1,builder.build());
 
         });
 
@@ -96,18 +115,16 @@ public class MainActivity extends AppCompatActivity {
         AlertDialog.Builder ab = new AlertDialog.Builder(MainActivity.this);
         ab.setTitle("Alert!");
         ab.setMessage("are you sure to exit?");
-        ab.setPositiveButton("yes", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.dismiss();
-                //if you want to kill app . from other then your main avtivity.(Launcher)
-                android.os.Process.killProcess(android.os.Process.myPid());
-                System.exit(1);
+        ab.setPositiveButton("yes", (dialog, which) -> {
+            dialog.dismiss();
+            //if you want to kill app . from other then your main avtivity.(Launcher)
+            android.os.Process.killProcess(android.os.Process.myPid());
+            System.exit(1);
 
-                //if you want to finish just current activity
 
-                MainActivity.this.finish();
-            }
+            //if you want to finish just current activity
+
+            MainActivity.this.finish();
         });
         ab.setNegativeButton("no", new DialogInterface.OnClickListener() {
             @Override
@@ -127,7 +144,6 @@ public class MainActivity extends AppCompatActivity {
 
         startActivityForResult(Intent.createChooser(i, "Select Picture"), SELECT_PICTURE);
     }
-
 
     // Create a BroadcastReceiver for ACTION_FOUND.
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
