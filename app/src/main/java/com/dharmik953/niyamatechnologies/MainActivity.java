@@ -9,26 +9,35 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothServerSocket;
+import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.RingtoneManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Message;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.IOException;
 import java.util.Set;
+import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_ENABLE_BT = 20 ;
+    private static final UUID MY_UUID = UUID.randomUUID() ;
+    private static final String STATE_CONNECTED = "device conneted";
     int SELECT_PICTURE = 200;
 
     BluetoothAdapter bluetoothAdapter;
@@ -55,11 +64,6 @@ public class MainActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
         registerReceiver(receiver, filter);
 
-        int requestCode = 1;
-        Intent discoverableIntent =
-                new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-        discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
-        startActivityForResult(discoverableIntent, requestCode);
 
         bluetooth.setOnClickListener(v -> {
             bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -67,6 +71,13 @@ public class MainActivity extends AppCompatActivity {
                 // Device doesn't support Bluetooth
                 Toast.makeText(getApplicationContext(), "Your devise has no bluetooth", Toast.LENGTH_SHORT).show();
             }
+
+
+            int requestCode = 1;
+            Intent discoverableIntent =
+                    new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
+            discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
+            startActivityForResult(discoverableIntent, requestCode);
 
             if (!bluetoothAdapter.isEnabled()) {
                 Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
@@ -120,7 +131,6 @@ public class MainActivity extends AppCompatActivity {
             //if you want to kill app . from other then your main avtivity.(Launcher)
             android.os.Process.killProcess(android.os.Process.myPid());
             System.exit(1);
-
 
             //if you want to finish just current activity
 
@@ -179,6 +189,63 @@ public class MainActivity extends AppCompatActivity {
 
                     imageView.setImageURI(selectedImageUri);
                 }
+            }
+        }
+    }
+
+    private class AcceptThread extends Thread {
+        private static final String NAME = "Niyama_Technologies";
+        private final BluetoothServerSocket mmServerSocket;
+
+        public AcceptThread() {
+            // Use a temporary object that is later assigned to mmServerSocket
+            // because mmServerSocket is final.
+            BluetoothServerSocket tmp = null;
+            try {
+                // MY_UUID is the app's UUID string, also used by the client code.
+                tmp = bluetoothAdapter.listenUsingRfcommWithServiceRecord(NAME, MY_UUID);
+            } catch (IOException e) {
+                Log.e("TAG", "Socket's listen() method failed", e);
+            }
+            mmServerSocket = tmp;
+        }
+
+        public void run() {
+            BluetoothSocket socket = null;
+            // Keep listening until exception occurs or a socket is returned.
+            while (true) {
+                try {
+
+                    socket = mmServerSocket.accept();
+                } catch (IOException e) {
+                    Log.e("TAG", "Socket's accept() method failed", e);
+                    break;
+                }
+
+                if (socket != null) {
+                    // A connection was accepted. Perform work associated with
+                    // the connection in a separate thread.
+//                    manageMyConnectedSocket(socket);
+
+                    // server code
+
+
+                    try {
+                        mmServerSocket.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    break;
+                }
+            }
+        }
+
+        // Closes the connect socket and causes the thread to finish.
+        public void cancel() {
+            try {
+                mmServerSocket.close();
+            } catch (IOException e) {
+                Log.e("TAG", "Could not close the connect socket", e);
             }
         }
     }
